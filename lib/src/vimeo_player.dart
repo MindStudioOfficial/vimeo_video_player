@@ -60,7 +60,32 @@ class VimeoVideoPlayer extends StatefulWidget {
   /// Used to display the vimeo logo
   ///
   /// Default value: [false]
-  final bool vimeoLogo;
+  final bool showVimeoLogo;
+
+  /// Used to display the video's badge
+  ///
+  /// Default value: [false]
+  final bool badge;
+
+  /// Used to display closed captions (if available for the video)
+  ///
+  /// Default value: [true]
+  final bool showClosedCaptionButton;
+
+  /// Used to enable Picture-in-Picture mode
+  /// When enabled, the player can be played in a floating window while the user interacts with other apps (supported on platforms that allow PiP)
+  /// Default value: [true]
+  final bool showPictureInPictureButton;
+
+  /// Used to display the transcript button (if available for the video)
+  /// When enabled, the player will show a button to display the transcript of the video (if available)
+  /// Default value: [true]
+  final bool showTranscriptButton;
+
+  /// Used to display the volume button
+  /// When enabled, the player will show a button to control the volume of the video
+  /// Default value: [true]
+  final bool showVolumeButton;
 
   /// Used to enable fullscreen mode when playing
   /// When enabled, the player go full screen when play is hit
@@ -134,7 +159,12 @@ class VimeoVideoPlayer extends StatefulWidget {
     this.enableDNT = true,
     this.privacyHash,
     this.portrait = false,
-    this.vimeoLogo = false,
+    this.showVimeoLogo = false,
+    this.badge = false,
+    this.showClosedCaptionButton = true,
+    this.showPictureInPictureButton = false,
+    this.showTranscriptButton = false,
+    this.showVolumeButton = true,
     this.enableFullScreenOnPlay = false,
     this.backgroundColor = Colors.black,
     this.onReady,
@@ -295,8 +325,13 @@ class _VimeoVideoPlayerState extends State<VimeoVideoPlayer> {
         '&dnt=${widget.enableDNT.toFlag()}'
         '${widget.privacyHash != null ? '&h=${widget.privacyHash}' : ''}'
         '&portrait=${widget.portrait.toFlag()}'
-        '&vimeo_logo=${(widget.vimeoLogo).toFlag()}'
-        '&playsinline=${(!widget.enableFullScreenOnPlay).toFlag()}';
+        '&vimeo_logo=${(widget.showVimeoLogo).toFlag()}'
+        '&playsinline=${(!widget.enableFullScreenOnPlay).toFlag()}'
+        '&pip=${widget.showPictureInPictureButton.toFlag()}'
+        '&badge=${widget.badge.toFlag()}'
+        '&cc=${widget.showClosedCaptionButton.toFlag()}'
+        '&transcript=${widget.showTranscriptButton.toFlag()}'
+        '&volume=${widget.showVolumeButton.toFlag()}';
   }
 
   /// Manage vimeo player events received from the WebView
