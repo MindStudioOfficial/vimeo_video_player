@@ -3,9 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:vimeo_video_player/mobile/web_listener_stub.dart'
-if (dart.library.js_interop) 'package:vimeo_video_player/web/web_listener_web.dart';
-
-
+    if (dart.library.js_interop) 'package:vimeo_video_player/web/web_listener_web.dart';
 
 /// Vimeo video player with customizable controls and event callbacks using the InAppWebView
 class VimeoVideoPlayer extends StatefulWidget {
@@ -62,7 +60,7 @@ class VimeoVideoPlayer extends StatefulWidget {
   /// Used to display the vimeo logo
   ///
   /// Default value: [false]
-  final bool badge;
+  final bool vimeoLogo;
 
   /// Used to enable fullscreen mode when playing
   /// When enabled, the player go full screen when play is hit
@@ -136,7 +134,7 @@ class VimeoVideoPlayer extends StatefulWidget {
     this.enableDNT = true,
     this.privacyHash,
     this.portrait = false,
-    this.badge = false,
+    this.vimeoLogo = false,
     this.enableFullScreenOnPlay = false,
     this.backgroundColor = Colors.black,
     this.onReady,
@@ -159,7 +157,6 @@ class VimeoVideoPlayer extends StatefulWidget {
 }
 
 class _VimeoVideoPlayerState extends State<VimeoVideoPlayer> {
-
   @override
   void initState() {
     super.initState();
@@ -298,7 +295,7 @@ class _VimeoVideoPlayerState extends State<VimeoVideoPlayer> {
         '&dnt=${widget.enableDNT.toFlag()}'
         '${widget.privacyHash != null ? '&h=${widget.privacyHash}' : ''}'
         '&portrait=${widget.portrait.toFlag()}'
-        '&badge=${(!widget.badge).toFlag()}'
+        '&vimeo_logo=${(widget.vimeoLogo).toFlag()}'
         '&playsinline=${(!widget.enableFullScreenOnPlay).toFlag()}';
   }
 
