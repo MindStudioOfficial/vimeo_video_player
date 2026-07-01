@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -217,6 +219,7 @@ class VimeoVideoPlayer extends StatefulWidget {
 
 class _VimeoVideoPlayerState extends State<VimeoVideoPlayer> {
   InAppWebViewController? _webViewController;
+  StreamSubscription<dynamic>? _webListenerSubscription;
   bool _disposed = false;
 
   @override
@@ -225,7 +228,7 @@ class _VimeoVideoPlayerState extends State<VimeoVideoPlayer> {
 
     widget.controller?._attach(this);
 
-    setupWebListener((event) {
+    _webListenerSubscription = setupWebListener((event) {
       if (!mounted || _disposed) return;
       _manageVimeoPlayerEvent(event);
     });
@@ -244,6 +247,7 @@ class _VimeoVideoPlayerState extends State<VimeoVideoPlayer> {
   @override
   void dispose() {
     _disposed = true;
+    _webListenerSubscription?.cancel();
     widget.controller?._detach(this);
     _webViewController = null;
     super.dispose();

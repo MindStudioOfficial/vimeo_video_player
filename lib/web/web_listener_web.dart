@@ -1,8 +1,10 @@
+import 'dart:async';
+
 import 'package:web/web.dart' as web;
 import 'dart:js_interop';
 
-void setupWebListener(Function(dynamic) onEvent) {
-  web.window.onMessage.listen((event) {
+StreamSubscription<dynamic> setupWebListener(Function(dynamic) onEvent) {
+  return web.window.onMessage.listen((event) {
     final data = event.data;
 
     if (data is JSAny) {
