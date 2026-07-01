@@ -254,17 +254,27 @@ class _VimeoVideoPlayerState extends State<VimeoVideoPlayer> {
   }
 
   Future<void> _seekTo(Duration position) async {
+    final seconds = position.inMilliseconds / 1000.0;
+
+    if (kIsWeb) {
+      sendVimeoCommand(command: 'seekTo', seconds: seconds);
+      return;
+    }
+
     final controller = _webViewController;
     if (controller == null || !mounted || _disposed) return;
 
-    final seconds = position.inMilliseconds / 1000.0;
-
     await controller.evaluateJavascript(
-      source: 'window.seekVimeoTo(${seconds.toStringAsFixed(3)});',
+      source: 'window.seekVimeoTo($seconds);',
     );
   }
 
   Future<void> _play() async {
+    if (kIsWeb) {
+      sendVimeoCommand(command: 'play');
+      return;
+    }
+
     final controller = _webViewController;
     if (controller == null || !mounted || _disposed) return;
 
@@ -274,6 +284,11 @@ class _VimeoVideoPlayerState extends State<VimeoVideoPlayer> {
   }
 
   Future<void> _pause() async {
+    if (kIsWeb) {
+      sendVimeoCommand(command: 'pause');
+      return;
+    }
+
     final controller = _webViewController;
     if (controller == null || !mounted || _disposed) return;
 
@@ -383,15 +398,19 @@ class _VimeoVideoPlayerState extends State<VimeoVideoPlayer> {
           seconds = Number(seconds);
 
           if (!Number.isFinite(seconds)) {
+            console.error('Invalid seek time:', seconds);
             return;
           }
 
           if (!playerReady) {
+            console.warn('Player not ready. Seek will be performed once the player is ready.');
             pendingSeekSeconds = seconds;
             return;
           }
 
-          return player.setCurrentTime(seconds);
+          let result = player.setCurrentTime(seconds);
+          console.log('Seek result:', result);
+          return result;
         };
 
         window.playVimeo = function() {
@@ -409,6 +428,29 @@ class _VimeoVideoPlayerState extends State<VimeoVideoPlayer> {
 
           return player.pause();
         };
+
+        window.addEventListener('message', function(event) {
+          var data = event.data;
+
+          console.log('Vimeo wrapper received message:', data);
+
+          if (!data || data.type !== 'vimeoCommand') {
+            return;
+          }
+
+          if (data.command === 'seekTo') {
+            var result = window.seekVimeoTo(data.seconds);
+            console.log('Seek result from message:', result);
+          }
+
+          if (data.command === 'play') {
+            window.playVimeo();
+          }
+
+          if (data.command === 'pause') {
+            window.pauseVimeo();
+          }
+        });
 
         function sendEventToFlutter(eventName) {
           if (window.flutter_inappwebview) {
