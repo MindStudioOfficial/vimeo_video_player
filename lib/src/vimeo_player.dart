@@ -5,6 +5,32 @@ import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:vimeo_video_player/mobile/web_listener_stub.dart'
     if (dart.library.js_interop) 'package:vimeo_video_player/web/web_listener_web.dart';
 
+class VimeoVideoPlayerController {
+  _VimeoVideoPlayerState? _state;
+
+  void _attach(_VimeoVideoPlayerState state) {
+    _state = state;
+  }
+
+  void _detach(_VimeoVideoPlayerState state) {
+    if (_state == state) {
+      _state = null;
+    }
+  }
+
+  Future<void> seekTo(Duration position) async {
+    await _state?._seekTo(position);
+  }
+
+  Future<void> play() async {
+    await _state?._play();
+  }
+
+  Future<void> pause() async {
+    await _state?._pause();
+  }
+}
+
 /// Vimeo video player with customizable controls and event callbacks using the InAppWebView
 class VimeoVideoPlayer extends StatefulWidget {
   /// Defines the vimeo video ID to be played
@@ -147,6 +173,8 @@ class VimeoVideoPlayer extends StatefulWidget {
   /// Defines the initial video position in seconds
   final int? initialPositionInSeconds;
 
+  final VimeoVideoPlayerController? controller;
+
   VimeoVideoPlayer({
     super.key,
     required this.videoId,
@@ -180,6 +208,7 @@ class VimeoVideoPlayer extends StatefulWidget {
     this.onExitFullscreen,
     this.currentPositionInSeconds,
     this.initialPositionInSeconds,
+    this.controller,
   }) : assert(videoId.isNotEmpty, 'videoId cannot be empty!');
 
   @override
@@ -187,12 +216,66 @@ class VimeoVideoPlayer extends StatefulWidget {
 }
 
 class _VimeoVideoPlayerState extends State<VimeoVideoPlayer> {
+  InAppWebViewController? _webViewController;
+  bool _disposed = false;
+
   @override
   void initState() {
     super.initState();
+
+    widget.controller?._attach(this);
+
     setupWebListener((event) {
+      if (!mounted || _disposed) return;
       _manageVimeoPlayerEvent(event);
     });
+  }
+
+  @override
+  void didUpdateWidget(covariant VimeoVideoPlayer oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    if (oldWidget.controller != widget.controller) {
+      oldWidget.controller?._detach(this);
+      widget.controller?._attach(this);
+    }
+  }
+
+  @override
+  void dispose() {
+    _disposed = true;
+    widget.controller?._detach(this);
+    _webViewController = null;
+    super.dispose();
+  }
+
+  Future<void> _seekTo(Duration position) async {
+    final controller = _webViewController;
+    if (controller == null || !mounted || _disposed) return;
+
+    final seconds = position.inMilliseconds / 1000.0;
+
+    await controller.evaluateJavascript(
+      source: 'window.seekVimeoTo(${seconds.toStringAsFixed(3)});',
+    );
+  }
+
+  Future<void> _play() async {
+    final controller = _webViewController;
+    if (controller == null || !mounted || _disposed) return;
+
+    await controller.evaluateJavascript(
+      source: 'window.playVimeo();',
+    );
+  }
+
+  Future<void> _pause() async {
+    final controller = _webViewController;
+    if (controller == null || !mounted || _disposed) return;
+
+    await controller.evaluateJavascript(
+      source: 'window.pauseVimeo();',
+    );
   }
 
   @override
@@ -210,14 +293,18 @@ class _VimeoVideoPlayerState extends State<VimeoVideoPlayer> {
         baseUrl: WebUri("https://player.vimeo.com"),
       ),
       onWebViewCreated: (controller) {
-        widget.onInAppWebViewCreated!(controller);
+        _webViewController = controller;
+        widget.onInAppWebViewCreated?.call(controller);
+
         if (!kIsWeb) {
-          // Handle JavaScript callbacks
           controller.addJavaScriptHandler(
             handlerName: 'onVimeoEvent',
             callback: (args) {
-              String event = args.isNotEmpty ? args[0].toString() : "unknown";
+              if (!mounted || _disposed) return null;
+
+              final event = args.isNotEmpty ? args[0].toString() : "unknown";
               _manageVimeoPlayerEvent(event);
+              return null;
             },
           );
         }
@@ -285,6 +372,40 @@ class _VimeoVideoPlayerState extends State<VimeoVideoPlayer> {
         var iframe = document.getElementById('vimeoPlayer');
         var player = new Vimeo.Player(iframe);
 
+        var playerReady = false;
+        var pendingSeekSeconds = null;
+
+        window.seekVimeoTo = function(seconds) {
+          seconds = Number(seconds);
+
+          if (!Number.isFinite(seconds)) {
+            return;
+          }
+
+          if (!playerReady) {
+            pendingSeekSeconds = seconds;
+            return;
+          }
+
+          return player.setCurrentTime(seconds);
+        };
+
+        window.playVimeo = function() {
+          if (!playerReady) {
+            return;
+          }
+
+          return player.play();
+        };
+
+        window.pauseVimeo = function() {
+          if (!playerReady) {
+            return;
+          }
+
+          return player.pause();
+        };
+
         function sendEventToFlutter(eventName) {
           if (window.flutter_inappwebview) {
             // Mobile (Android/iOS)
@@ -297,10 +418,19 @@ class _VimeoVideoPlayerState extends State<VimeoVideoPlayer> {
 
         player.on('play', function() { sendEventToFlutter('onPlay'); });
         player.on('pause', function() { sendEventToFlutter('onPause'); });
-        player.on('loaded', function() { 
+        player.on('loaded', function() {
+          playerReady = true;
+
           sendEventToFlutter('onReady');
+
           if (${widget.initialPositionInSeconds != null}) {
-            player.setCurrentTime(${widget.initialPositionInSeconds});
+            pendingSeekSeconds = ${widget.initialPositionInSeconds};
+          }
+
+          if (pendingSeekSeconds !== null) {
+            var seekSeconds = pendingSeekSeconds;
+            pendingSeekSeconds = null;
+            player.setCurrentTime(seekSeconds);
           }
         });
         player.on('seeked', function() { sendEventToFlutter('onSeek'); });
