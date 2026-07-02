@@ -409,7 +409,6 @@ class _VimeoVideoPlayerState extends State<VimeoVideoPlayer> {
           }
 
           let result = player.setCurrentTime(seconds);
-          console.log('Seek result:', result);
           return result;
         };
 
@@ -432,15 +431,12 @@ class _VimeoVideoPlayerState extends State<VimeoVideoPlayer> {
         window.addEventListener('message', function(event) {
           var data = event.data;
 
-          console.log('Vimeo wrapper received message:', data);
-
           if (!data || data.type !== 'vimeoCommand') {
             return;
           }
 
           if (data.command === 'seekTo') {
             var result = window.seekVimeoTo(data.seconds);
-            console.log('Seek result from message:', result);
           }
 
           if (data.command === 'play') {

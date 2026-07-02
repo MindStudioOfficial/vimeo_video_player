@@ -20,14 +20,18 @@ void sendVimeoCommand({
   required String command,
   double? seconds,
 }) {
-  final element = web.document.getElementById('flutter_inappwebview-0');
+  final element = web.document.querySelector(
+    'iframe[id^="flutter_inappwebview-"]',
+  );
 
-  if (element is! web.HTMLIFrameElement) {
-    web.console.warn('Vimeo iframe not found'.toJS);
+  if (element == null || !element.isA<web.HTMLIFrameElement>()) {
+    web.console.warn('Vimeo InAppWebView iframe not found'.toJS);
     return;
   }
 
-  element.contentWindow?.postMessage(
+  final iframe = element as web.HTMLIFrameElement;
+
+  iframe.contentWindow?.postMessage(
     {
       'type': 'vimeoCommand',
       'command': command,
